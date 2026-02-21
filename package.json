@@ -1,0 +1,15 @@
+{
+  "name": "alphaboost-bot",
+  "version": "1.0.0",
+  "description": "AlphaBoost Bot - minimal Telegram bot for preset services, pricing and manual payments",
+  "main": "main.js",
+  "scripts": {
+    "start": "node main.js"
+  },
+  "dependencies": {
+    "node-telegram-bot-api": "^0.61.0"
+  },
+  "engines": {
+    "node": ">=16"
+  }
+}
