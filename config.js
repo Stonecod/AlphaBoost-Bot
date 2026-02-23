@@ -1,7 +1,8 @@
-const BOT_TOKEN = process.env.BOT_TOKEN || null;
+const BOT_TOKEN = process.env.BOT_TOKEN;
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "@M19_yrs";
-const ADMIN_HANDLE = `@${M19_yrs.replace(/^@/, "")}`;
 
+// Clean admin handle (removes extra @ if added)
+const ADMIN_HANDLE = `@${ADMIN_USERNAME.replace(/^@/, "")}`;
 // Wallet addresses (edit here) - only Solana is used by default
 const WALLETS = {
   SOLANA: "BbyDNpq4nGgABRuer1RorRqi8rjWSzGwfcnP7NLvtuZX",

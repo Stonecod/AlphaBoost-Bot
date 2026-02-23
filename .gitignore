@@ -5,3 +5,5 @@ dist
 npm-debug.log
 config.py
 requirements.txt
+node_modules
+.env
