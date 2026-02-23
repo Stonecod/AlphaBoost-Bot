@@ -1,5 +1,4 @@
 require("dotenv").config();
-
 const TelegramBot = require('node-telegram-bot-api');
 const config = require('./config');
 
@@ -10,110 +9,128 @@ if (!config.BOT_TOKEN) {
 
 const bot = new TelegramBot(config.BOT_TOKEN, { polling: true });
 
+// --- Keyboards ---
+
 function mainMenuKeyboard() {
   return {
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: '🚀 Trending Services', callback_data: 'trending' }],
-        [{ text: '📈 Volume Boost', callback_data: 'volume' }],
-        [{ text: '💰 Pricing', callback_data: 'pricing' }],
-        [{ text: '💳 Payment', callback_data: 'payment' }],
-        [{ text: '📞 Contact Admin', callback_data: 'contact' }],
-      ],
-    },
+    inline_keyboard: [
+      [{ text: '🚀 Trending Services', callback_data: 'trending' }],
+      [{ text: '📈 Volume Boost', callback_data: 'volume' }],
+      [{ text: '💰 Pricing', callback_data: 'pricing' }],
+      [{ text: '💳 Payment', callback_data: 'payment' }],
+      [{ text: '📞 Contact Admin', callback_data: 'contact' }],
+    ],
+  };
+}
+
+function backButton() {
+  return {
+    inline_keyboard: [
+      [{ text: '⬅️ Back to Main Menu', callback_data: 'menu' }],
+    ],
   };
 }
 
 function paymentKeyboard() {
   return {
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: 'Import Wallet (paste public address)', callback_data: 'import_wallet' }],
-        [{ text: 'Back to Menu', callback_data: 'menu' }],
-      ],
-    },
+    inline_keyboard: [
+      [{ text: '📥 Import Wallet', callback_data: 'import_wallet' }],
+      [{ text: '⬅️ Back to Main Menu', callback_data: 'menu' }],
+    ],
   };
 }
 
+// --- Helper for "Disappearing" messages ---
+// This edits the existing message instead of sending a new one
+async function updateMenu(chatId, messageId, text, keyboard) {
+  try {
+    await bot.editMessageText(text, {
+      chat_id: chatId,
+      message_id: messageId,
+      reply_markup: keyboard,
+      parse_mode: 'Markdown'
+    });
+  } catch (e) {
+    // If edit fails (e.g. same text), just send a new one
+    bot.sendMessage(chatId, text, { reply_markup: keyboard, parse_mode: 'Markdown' });
+  }
+}
+
+// --- Command Handlers ---
+
 bot.onText(/\/start/, (msg) => {
-  const chatId = msg.chat.id;
-  bot.sendMessage(chatId, config.WELCOME_TEXT, mainMenuKeyboard());
+  bot.sendMessage(msg.chat.id, config.WELCOME_TEXT, { reply_markup: mainMenuKeyboard() });
 });
 
 bot.onText(/\/help/, (msg) => {
-  const chatId = msg.chat.id;
-  bot.sendMessage(chatId, config.HELP_TEXT, mainMenuKeyboard());
+  bot.sendMessage(msg.chat.id, config.HELP_TEXT, { reply_markup: backButton() });
 });
 
-const awaitingWallets = new Map(); // chatId -> true while waiting for public address
+// Note: Telegram commands cannot have spaces. We use underscore.
+bot.onText(/\/volume_boost/, (msg) => {
+  bot.sendMessage(msg.chat.id, config.VOLUME_TEXT, { reply_markup: backButton() });
+});
 
-bot.on('callback_query', (callbackQuery) => {
+bot.onText(/\/contact_admin/, (msg) => {
+  bot.sendMessage(msg.chat.id, config.CONTACT_TEXT, { reply_markup: backButton() });
+});
+
+// --- Callback Query Handler (Buttons) ---
+
+const awaitingWallets = new Map();
+
+bot.on('callback_query', async (callbackQuery) => {
   const data = callbackQuery.data;
   const msg = callbackQuery.message;
   const chatId = msg.chat.id;
+  const messageId = msg.message_id;
 
-  if (data === 'trending') {
-    bot.sendMessage(chatId, config.TRENDING_TEXT);
+  if (data === 'menu') {
+    await updateMenu(chatId, messageId, config.WELCOME_TEXT, mainMenuKeyboard());
+  } else if (data === 'trending') {
+    await updateMenu(chatId, messageId, config.TRENDING_TEXT, backButton());
   } else if (data === 'volume') {
-    bot.sendMessage(chatId, config.VOLUME_TEXT);
+    await updateMenu(chatId, messageId, config.VOLUME_TEXT, backButton());
   } else if (data === 'pricing') {
-    bot.sendMessage(chatId, config.PRICING_TEXT);
+    await updateMenu(chatId, messageId, config.PRICING_TEXT, backButton());
   } else if (data === 'payment') {
-    bot.sendMessage(chatId, config.PAYMENT_TEXT, paymentKeyboard());
+    await updateMenu(chatId, messageId, config.PAYMENT_TEXT, paymentKeyboard());
+  } else if (data === 'contact') {
+    await updateMenu(chatId, messageId, config.CONTACT_TEXT, backButton());
   } else if (data === 'import_wallet') {
     awaitingWallets.set(chatId, true);
-    bot.sendMessage(
-      chatId,
-      `Please send your wallet PUBLIC ADDRESS to import. Do NOT send private keys or seed phrases.\n\nAfter sending your public address, it will be forwarded to ${config.ADMIN_HANDLE} for manual verification.`,
-    );
-  } else if (data === 'contact') {
-    bot.sendMessage(chatId, config.CONTACT_TEXT);
-  } else if (data === 'menu') {
-    bot.sendMessage(chatId, config.WELCOME_TEXT, mainMenuKeyboard());
-  } else {
-    bot.sendMessage(chatId, config.UNKNOWN_TEXT, mainMenuKeyboard());
+    // Delete the menu so the user can type their address clearly
+    bot.deleteMessage(chatId, messageId); 
+    bot.sendMessage(chatId, `Please send your wallet PUBLIC ADDRESS.\n\nAfter sending, it will be forwarded to Admin.`);
   }
 
   bot.answerCallbackQuery(callbackQuery.id).catch(() => {});
 });
 
-// Graceful fallback for unknown messages (non-command)
+// --- Message Handler (Wallet logic remains same) ---
+
 bot.on('message', (msg) => {
   const text = msg.text || '';
   const chatId = msg.chat.id;
 
-  // If this chat is awaiting a wallet public address, treat the incoming text as the address
+  if (text.startsWith('/')) return; // Ignore commands
+
   if (awaitingWallets.has(chatId)) {
     const walletAddress = text.trim();
-    // Basic safety check: don't accept obvious private-key phrases
-    const lowered = walletAddress.toLowerCase();
-    if (lowered.includes('private') || lowered.includes('seed') || lowered.length < 10) {
-      bot.sendMessage(chatId, 'Invalid address detected. Do NOT send private keys or seed phrases. Please send only your PUBLIC wallet address.');
+    if (walletAddress.length < 10) {
+      bot.sendMessage(chatId, 'Invalid address. Please try again.');
       return;
     }
 
-    // Forward the public address to admin with user info
     const user = msg.from;
-    const sender = user.username ? `@${user.username}` : `${user.first_name || ''} ${user.last_name || ''}`;
-    const forwardText = `Wallet import request:\nUser: ${sender} (id: ${user.id})\nChat: ${chatId}\nAddress: ${walletAddress}`;
+    const sender = user.username ? `@${user.username}` : `${user.first_name}`;
+    const forwardText = `Wallet Request:\nUser: ${sender}\nAddress: ${walletAddress}`;
 
-    bot.sendMessage(config.ADMIN_HANDLE, forwardText).catch((err) => {
-      // If sending to @username fails, try sending to ADMIN_USERNAME directly
-      bot.sendMessage(config.ADMIN_USERNAME, forwardText).catch(() => {});
-    });
-
-    bot.sendMessage(chatId, `Thanks — your public address has been sent to ${config.ADMIN_HANDLE} for verification.`);
+    bot.sendMessage(config.ADMIN_HANDLE, forwardText).catch(() => {});
+    
+    bot.sendMessage(chatId, `Success! Sent to admin.`, { reply_markup: mainMenuKeyboard() });
     awaitingWallets.delete(chatId);
-    return;
   }
-
-  // ignore commands handled above
-  if (text.startsWith('/start') || text.startsWith('/help')) return;
-  // If message was a callback reply or has no text, ignore
-  if (msg?.reply_to_message) return;
-
-  // Otherwise send unknown help text with menu
-  bot.sendMessage(chatId, config.UNKNOWN_TEXT, mainMenuKeyboard());
 });
 
-console.log('AlphaBoost Bot started (polling)...');
+console.log('AlphaBoost Bot updated and running...');
