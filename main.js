@@ -19,10 +19,11 @@ const keyboards = {
   },
   pricing: {
     inline_keyboard: [
-      [{ text: '🔹 0.6 SOL | 3 HOURS', callback_data: 'pay_0.6' }],
-      [{ text: '🔹 1.2 SOL | 6 HOURS', callback_data: 'pay_1.2' }],
-      [{ text: '🔹 2.8 SOL | 12 HOURS', callback_data: 'pay_2.8' }],
-      [{ text: '🔹 4.5 SOL | 24 HOURS', callback_data: 'pay_4.5' }],
+      [{ text: '🔹 0.5 SOL | 2 HOURS', callback_data: 'pay_0.5' }],
+      [{ text: '🔹 1 SOL | 4 HOURS', callback_data: 'pay_1' }],
+      [{ text: '🔹 3 SOL | 8 HOURS', callback_data: 'pay_3' }],
+      [{ text: '🔹 5 SOL | 12 HOURS', callback_data: 'pay_5' }],
+      [{ text: '🔹 8 SOL | 24 HOURS', callback_data: 'pay_8' }],
       [{ text: '⬅️ Back', callback_data: 'menu' }, { text: '🔝 Main Menu', callback_data: 'menu' }]
     ]
   },
@@ -86,7 +87,7 @@ bot.on('callback_query', async (query) => {
     });
   }
   else if (query.data === 'done_payment') {
-    const m = await bot.sendMessage(chatId, "_Wait for confirmation..._");
+    const m = await bot.sendMessage(chatId, "Wait for confirmation...");
     setTimeout(() => bot.deleteMessage(chatId, m.message_id).catch(()=>{}), 60000);
     
     if(config.ADMIN_ID) {
