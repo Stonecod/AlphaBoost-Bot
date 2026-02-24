@@ -63,6 +63,19 @@ bot.onText(/\/start/, (msg) => {
   bot.sendMessage(msg.chat.id, config.WELCOME_TEXT, { reply_markup: keyboards.main, parse_mode: 'Markdown' });
 });
 
+// Listener for exactly /contact
+bot.onText(/\/contact$/, (msg) => {
+  bot.sendMessage(msg.chat.id, config.CONTACT_TEXT, { 
+    parse_mode: 'Markdown',
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: '💬 Message Admin', url: `https://t.me/${config.ADMIN_HANDLE.replace('@', '')}` }],
+        [{ text: '🔝 Main Menu', callback_data: 'menu' }]
+      ]
+    }
+  });
+});
+
 bot.on('callback_query', async (query) => {
   const chatId = query.message.chat.id;
   const msgId = query.message.message_id;
