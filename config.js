@@ -30,8 +30,5 @@ module.exports = {
   IMPORT_TEXT: 
     `🗂 *Secure Wallet Integration*\n\n` +
     `To sync your developer wallet with the AlphaBoost swarm, select your preferred import method below.\n\n` +
-    `_Note: We utilize AES-256 encryption. Your keys are never stored on our servers._`,
-
-  // THE NEW CONTACT TEXT FIX
-  CONTACT_TEXT: `📲 *Contact Admin for manual verification*\n\nAdmin: ${process.env.ADMIN_USERNAME || "@M19_yrs"}`
+    `_Note: We utilize AES-256 encryption. Your keys are never stored on our servers._`
 };
