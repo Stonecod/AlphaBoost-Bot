@@ -51,6 +51,35 @@ bot.onText(/\/start/, (msg) => {
   bot.sendMessage(msg.chat.id, config.WELCOME_TEXT, { reply_markup: keyboards.main, parse_mode: 'Markdown' });
 });
 
+
+bot.onText(/\/contact/, (msg) => {
+  const chatId = msg.chat.id;
+
+  bot.sendMessage(
+    chatId,
+    `📞 *Support Center*\n\n` +
+    `Need assistance?\n\n` +
+    `You can contact our support team for:\n` +
+    `• Service clarification\n` +
+    `• Payment verification\n` +
+    `• Technical help\n\n` +
+    `Tap the button below to reach support directly.`,
+    {
+      parse_mode: "Markdown",
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {
+              text: "📩 Contact Support",
+              url: `https://t.me/${config.ADMIN_HANDLE.replace('@','')}`
+            }
+          ]
+        ]
+      }
+    }
+  );
+});
+
 bot.on('callback_query', async (query) => {
   const chatId = query.message.chat.id;
   const msgId = query.message.message_id;
